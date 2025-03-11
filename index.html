@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV to PDF Streaming Exporter</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <!-- jsPDF library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/3.0.0/jspdf.umd.min.js"></script>
+    <!-- PapaParse for CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>CSV to PDF Streaming Exporter</h1>
+            <p>Export large CSV files to PDF with memory-efficient streaming</p>
+        </header>
+
+        <main>
+            <section class="file-input-section">
+                <h2>Select CSV File</h2>
+                <div class="file-drop-area">
+                    <input type="file" id="csv-file-input" accept=".csv" class="file-input">
+                    <label for="csv-file-input" class="file-label">
+                        <span class="file-message">Drag & drop your CSV file here or click to browse</span>
+                    </label>
+                </div>
+                <div class="file-info" id="file-info"></div>
+            </section>
+
+            <section class="options-section">
+                <h2>PDF Options</h2>
+                <div class="options-grid">
+                    <div class="option-group">
+                        <label for="page-size">Page Size:</label>
+                        <select id="page-size">
+                            <option value="a4" selected>A4</option>
+                            <option value="letter">Letter</option>
+                            <option value="legal">Legal</option>
+                        </select>
+                    </div>
+                    <div class="option-group">
+                        <label for="orientation">Orientation:</label>
+                        <select id="orientation">
+                            <option value="portrait" selected>Portrait</option>
+                            <option value="landscape">Landscape</option>
+                        </select>
+                    </div>
+                    <div class="option-group">
+                        <label for="include-header">Include Header Row:</label>
+                        <input type="checkbox" id="include-header" checked>
+                    </div>
+                    <div class="option-group">
+                        <label for="chunk-size">Processing Chunk Size:</label>
+                        <select id="chunk-size">
+                            <option value="100">100 rows</option>
+                            <option value="500" selected>500 rows</option>
+                            <option value="1000">1000 rows</option>
+                            <option value="5000">5000 rows</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <section class="actions-section">
+                <button id="generate-pdf-btn" class="primary-btn" disabled>Generate PDF</button>
+                <button id="cancel-btn" class="secondary-btn" disabled>Cancel</button>
+            </section>
+
+            <section class="progress-section">
+                <div class="progress-container">
+                    <div class="progress-bar" id="progress-bar"></div>
+                </div>
+                <div class="progress-info" id="progress-info"></div>
+                <div class="memory-usage" id="memory-usage"></div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Using jsPDF 3.0.0 with streaming implementation for memory-efficient processing</p>
+        </footer>
+    </div>
+
+    <!-- Application scripts -->
+    <script src="js/utils.js"></script>
+    <script src="js/csv-parser.js"></script>
+    <script src="js/pdf-generator.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

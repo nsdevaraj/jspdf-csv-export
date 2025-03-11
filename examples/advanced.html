@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>jsPDF CSV Streaming - Advanced Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        .drop-zone {
+            border: 2px dashed #3498db;
+            border-radius: 5px;
+            padding: 25px;
+            text-align: center;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+        }
+        .drop-zone.active {
+            border-color: #27ae60;
+            background-color: rgba(39, 174, 96, 0.1);
+        }
+        .file-input {
+            display: none;
+        }
+        .btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        .btn:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        .progress-container {
+            margin: 20px 0;
+            display: none;
+        }
+        .progress-bar {
+            height: 20px;
+            background-color: #ecf0f1;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .progress {
+            height: 100%;
+            background-color: #2ecc71;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .status-message {
+            margin-top: 10px;
+            font-style: italic;
+            color: #7f8c8d;
+        }
+        .settings-panel {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .settings-panel h2 {
+            margin-top: 0;
+            font-size: 18px;
+            color: #2c3e50;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group select, .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .form-row {
+            display: flex;
+            gap: 15px;
+        }
+        .form-row .form-group {
+            flex: 1;
+        }
+        .checkbox-group {
+            margin-top: 10px;
+        }
+        .checkbox-group label {
+            font-weight: normal;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        .checkbox-group input {
+            margin-right: 8px;
+            width: auto;
+        }
+        .stats-container {
+            margin-top: 20px;
+            display: none;
+        }
+        .stats-container h3 {
+            margin-top: 0;
+            font-size: 16px;
+        }
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .stats-table th, .stats-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .stats-table th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>jsPDF CSV Streaming - Advanced Example</h1>
+        
+        <div id="drop-zone" class="drop-zone">
+            <p>Drag & drop your CSV file here or</p>
+            <input type="file" id="file-input" class="file-input" accept=".csv">
+            <button id="browse-button" class="btn">Browse Files</button>
+        </div>
+        
+        <div class="settings-panel" id="settings-panel">
+            <h2>PDF Generation Settings</h2>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="page-size">Page Size</label>
+                    <select id="page-size">
+                        <option value="a4">A4</option>
+                        <option value="letter">Letter</option>
+                        <option value="legal">Legal</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="orientation">Orientation</label>
+                    <select id="orientation">
+                        <option value="portrait">Portrait</option>
+                        <option value="landscape">Landscape</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="font-size">Font Size</label>
+                    <select id="font-size">
+                        <option value="8">8pt</option>
+                        <option value="10" selected>10pt</option>
+                        <option value="12">12pt</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="title">Document Title</label>
+                    <input type="text" id="title" placeholder="CSV Data Export">
+                </div>
+                
+                <div class="form-group">
+                    <label for="author">Author</label>
+                    <input type="text" id="author" placeholder="jsPDF CSV Streaming">
+                </div>
+            </div>
+            
+            <div class="checkbox-group">
+                <label>
+                    <input type="checkbox" id="include-header" checked>
+                    Include table header
+                </label>
+            </div>
+            
+            <div class="checkbox-group">
+                <label>
+                    <input type="checkbox" id="include-footer" checked>
+                    Include footer
+                </label>
+            </div>
+            
+            <div class="checkbox-group">
+                <label>
+                    <input type="checkbox" id="include-page-numbers" checked>
+                    Include page numbers
+                </label>
+            </div>
+        </div>
+        
+        <div>
+            <button id="generate-button" class="btn" disabled>Generate PDF</button>
+        </div>
+        
+        <div id="progress-container" class="progress-container">
+            <div class="progress-bar">
+                <div id="progress" class="progress"></div>
+            </div>
+            <div id="status-message" class="status-message">Ready to process...</div>
+        </div>
+        
+        <div id="stats-container" class="stats-container">
+            <h3>Performance Statistics</h3>
+            <table class="stats-table">
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody id="stats-body">
+                    <!-- Stats will be inserted here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Include jsPDF library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/3.0.0/jspdf.umd.min.js"></script>
+    
+    <!-- Include PapaParse for CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    
+    <!-- Include our library files -->
+    <script src="../js/utils.js"></script>
+    <script src="../js/csv-parser.js"></script>
+    <script src="../js/pdf-generator.js"></script>
+    <script src="../js/app.js"></script>
+    
+    <script>
+        // Initialize the application when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            const statsContainer = document.getElementById('stats-container');
+            const statsBody = document.getElementById('stats-body');
+            
+            // Initialize the application with advanced options
+            const app = new CSVtoPDFApp({
+                // UI element IDs
+                dropZoneId: 'drop-zone',
+                fileInputId: 'file-input',
+                browseButtonId: 'browse-button',
+                generateButtonId: 'generate-button',
+                progressContainerId: 'progress-container',
+                progressBarId: 'progress',
+                statusMessageId: 'status-message',
+                settingsPanelId: 'settings-panel',
+                
+                // Advanced callbacks
+                onStart: () => {
+                    console.log('Starting PDF generation process');
+                    statsContainer.style.display = 'none';
+                    statsBody.innerHTML = '';
+                },
+                
+                onProgress: (processed, total, page) => {
+                    console.log(`Progress: ${processed}/${total} rows (${Math.round((processed/total)*100)}%) - Page ${page}`);
+                },
+                
+                onComplete: (stats) => {
+                    console.log('PDF generation complete', stats);
+                    
+                    // Display performance statistics
+                    statsContainer.style.display = 'block';
+                    
+                    const metricsToShow = [
+                        { name: 'Total Rows', value: stats.totalRows },
+                        { name: 'Total Pages', value: stats.totalPages },
+                        { name: 'Processing Time', value: `${stats.processingTime.toFixed(2)} seconds` },
+                        { name: 'Rows Per Second', value: Math.round(stats.rowsPerSecond) },
+                        { name: 'Peak Memory Usage', value: `${stats.peakMemoryUsage} MB` },
+                        { name: 'Chunk Count', value: stats.chunkCount },
+                        { name: 'Average Chunk Size', value: Math.round(stats.avgChunkSize) }
+                    ];
+                    
+                    metricsToShow.forEach(metric => {
+                        const row = document.createElement('tr');
+                        
+                        const nameCell = document.createElement('td');
+                        nameCell.textContent = metric.name;
+                        
+                        const valueCell = document.createElement('td');
+                        valueCell.textContent = metric.value;
+                        
+                        row.appendChild(nameCell);
+                        row.appendChild(valueCell);
+                        
+                        statsBody.appendChild(row);
+                    });
+                },
+                
+                onError: (error) => {
+                    console.error('PDF generation error:', error);
+                }
+            });
+            
+            // Connect settings panel to app configuration
+            document.getElementById('page-size').addEventListener('change', function() {
+                app.updatePdfOptions({ pageSize: this.value });
+            });
+            
+            document.getElementById('orientation').addEventListener('change', function() {
+                app.updatePdfOptions({ orientation: this.value });
+            });
+            
+            document.getElementById('font-size').addEventListener('change', function() {
+                app.updatePdfOptions({ fontSize: parseInt(this.value) });
+            });
+            
+            document.getElementById('title').addEventListener('input', function() {
+                app.updatePdfOptions({ title: this.value });
+            });
+            
+            document.getElementById('author').addEventListener('input', function() {
+                app.updatePdfOptions({ author: this.value });
+            });
+            
+            document.getElementById('include-header').addEventListener('change', function() {
+                app.updatePdfOptions({ includeHeader: this.checked });
+            });
+            
+            document.getElementById('include-footer').addEventListener('change', function() {
+                app.updatePdfOptions({ includeFooter: this.checked });
+            });
+            
+            document.getElementById('include-page-numbers').addEventListener('change', function() {
+                app.updatePdfOptions({ includePageNumbers: this.checked });
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,223 @@
+/* styles.css - Styling for CSV to PDF Streaming Exporter */
+
+:root {
+  --primary-color: #4a6fa5;
+  --secondary-color: #166088;
+  --accent-color: #4cb5ab;
+  --background-color: #f5f7fa;
+  --text-color: #333;
+  --light-gray: #e0e0e0;
+  --medium-gray: #999;
+  --error-color: #d9534f;
+  --success-color: #5cb85c;
+  --warning-color: #f0ad4e;
+  --border-radius: 4px;
+  --box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.6;
+  color: var(--text-color);
+  background-color: var(--background-color);
+  padding: 20px;
+}
+
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+  background-color: white;
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  padding: 30px;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--light-gray);
+}
+
+header h1 {
+  color: var(--primary-color);
+  margin-bottom: 10px;
+}
+
+section {
+  margin-bottom: 30px;
+}
+
+h2 {
+  color: var(--secondary-color);
+  margin-bottom: 15px;
+}
+
+/* File input styling */
+.file-drop-area {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 120px;
+  padding: 25px;
+  border: 2px dashed var(--medium-gray);
+  border-radius: var(--border-radius);
+  transition: border-color 0.3s;
+  background-color: var(--background-color);
+  cursor: pointer;
+}
+
+.file-drop-area:hover {
+  border-color: var(--primary-color);
+}
+
+.file-input {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.file-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  color: var(--medium-gray);
+}
+
+.file-info {
+  margin-top: 15px;
+  font-size: 14px;
+}
+
+/* Options section */
+.options-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.option-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.option-group label {
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+select, input[type="checkbox"] {
+  padding: 8px;
+  border: 1px solid var(--light-gray);
+  border-radius: var(--border-radius);
+  background-color: white;
+}
+
+/* Buttons */
+.actions-section {
+  display: flex;
+  gap: 15px;
+  margin: 30px 0;
+}
+
+button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.3s, opacity 0.3s;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.primary-btn {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.primary-btn:hover:not(:disabled) {
+  background-color: var(--secondary-color);
+}
+
+.secondary-btn {
+  background-color: var(--light-gray);
+  color: var(--text-color);
+}
+
+.secondary-btn:hover:not(:disabled) {
+  background-color: #d0d0d0;
+}
+
+/* Progress section */
+.progress-container {
+  width: 100%;
+  height: 20px;
+  background-color: var(--light-gray);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0;
+  background-color: var(--accent-color);
+  transition: width 0.3s ease;
+}
+
+.progress-info, .memory-usage {
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+
+.memory-usage {
+  color: var(--medium-gray);
+}
+
+/* Footer */
+footer {
+  margin-top: 40px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--medium-gray);
+}
+
+/* Drag and drop states */
+.file-drop-area.drag-over {
+  border-color: var(--accent-color);
+  background-color: rgba(76, 181, 171, 0.05);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .options-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .actions-section {
+    flex-direction: column;
+  }
+  
+  button {
+    width: 100%;
+  }
+}

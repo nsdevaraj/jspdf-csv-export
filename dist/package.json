@@ -1,0 +1,20 @@
+{
+  "name": "jspdf-csv-export",
+  "version": "1.0.0",
+  "description": "Memory-efficient solution for exporting large CSV datasets to PDF using a streaming approach",
+  "main": "jspdf-csv-export.min.js",
+  "keywords": [
+    "jspdf",
+    "csv",
+    "pdf",
+    "export",
+    "streaming",
+    "large-data"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "jspdf": "^3.0.0",
+    "papaparse": "^5.3.2"
+  }
+}

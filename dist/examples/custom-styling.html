@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>jsPDF CSV Streaming - Custom Styling Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+            text-align: center;
+        }
+        .drop-zone {
+            border: 2px dashed #3498db;
+            border-radius: 5px;
+            padding: 25px;
+            text-align: center;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+            background-color: #f8fafc;
+        }
+        .drop-zone.active {
+            border-color: #27ae60;
+            background-color: rgba(39, 174, 96, 0.1);
+        }
+        .file-input {
+            display: none;
+        }
+        .btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        .btn:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        .btn-primary {
+            background-color: #9b59b6;
+        }
+        .btn-primary:hover {
+            background-color: #8e44ad;
+        }
+        .progress-container {
+            margin: 20px 0;
+            display: none;
+        }
+        .progress-bar {
+            height: 20px;
+            background-color: #ecf0f1;
+            border-radius: 5px;
+            overflow: hidden;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .progress {
+            height: 100%;
+            background: linear-gradient(to right, #3498db, #2ecc71);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .status-message {
+            margin-top: 10px;
+            font-style: italic;
+            color: #7f8c8d;
+            text-align: center;
+        }
+        .settings-panel {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .settings-panel h2 {
+            margin-top: 0;
+            font-size: 18px;
+            color: #2c3e50;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #34495e;
+        }
+        .form-group select, .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #fff;
+            transition: border-color 0.3s;
+        }
+        .form-group select:focus, .form-group input:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+        .form-row {
+            display: flex;
+            gap: 15px;
+        }
+        .form-row .form-group {
+            flex: 1;
+        }
+        .checkbox-group {
+            margin-top: 10px;
+        }
+        .checkbox-group label {
+            font-weight: normal;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        .checkbox-group input {
+            margin-right: 8px;
+            width: auto;
+        }
+        .color-picker {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .color-picker input[type="color"] {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-bottom: none;
+            margin-bottom: -1px;
+            background-color: #f8f8f8;
+            border-radius: 5px 5px 0 0;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            background-color: white;
+            border-color: #ddd;
+            color: #3498db;
+            font-weight: bold;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>jsPDF CSV Streaming - Custom Styling Example</h1>
+        
+        <div id="drop-zone" class="drop-zone">
+            <p>Drag & drop your CSV file here or</p>
+            <input type="file" id="file-input" class="file-input" accept=".csv">
+            <button id="browse-button" class="btn">Browse Files</button>
+        </div>
+        
+        <div class="settings-panel" id="settings-panel">
+            <div class="tabs">
+                <div class="tab active" data-tab="general">General</div>
+                <div class="tab" data-tab="table">Table Styling</div>
+                <div class="tab" data-tab="header">Header & Footer</div>
+            </div>
+            
+            <div class="tab-content active" id="general-tab">
+                <h2>General Settings</h2>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="page-size">Page Size</label>
+                        <select id="page-size">
+                            <option value="a4">A4</option>
+                            <option value="letter">Letter</option>
+                            <option value="legal">Legal</option>
+                            <option value="a3">A3</option>
+                            <option value="a5">A5</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="orientation">Orientation</label>
+                        <select id="orientation">
+                            <option value="portrait">Portrait</option>
+                            <option value="landscape">Landscape</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="title">Document Title</label>
+                        <input type="text" id="title" placeholder="CSV Data Export">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="author">Author</label>
+                        <input type="text" id="author" placeholder="jsPDF CSV Streaming">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="filename">Filename</label>
+                        <input type="text" id="filename" value="export.pdf">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="table-tab">
+                <h2>Table Styling</h2>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="font-size">Font Size</label>
+                        <select id="font-size">
+                            <option value="8">8pt</option>
+                            <option value="10" selected>10pt</option>
+                            <option value="12">12pt</option>
+                            <option value="14">14pt</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="cell-padding">Cell Padding</label>
+                        <select id="cell-padding">
+                            <option value="1">1pt</option>
+                            <option value="2" selected>2pt</option>
+                            <option value="3">3pt</option>
+                            <option value="4">4pt</option>
+                            <option value="5">5pt</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Header Background Color</label>
+                    <div class="color-picker">
+                        <input type="color" id="header-bg-color" value="#f0f0f0">
+                        <span id="header-bg-color-text">#f0f0f0</span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Alternate Row Background Color</label>
+                    <div class="color-picker">
+                        <input type="color" id="alt-row-bg-color" value="#f9f9f9">
+                        <span id="alt-row-bg-color-text">#f9f9f9</span>
+                    </div>
+                </div>
+                
+                <div class="checkbox-group">
+                    <label>
+                        <input type="checkbox" id="include-borders" checked>
+                        Include table borders
+                    </label>
+                </div>
+                
+                <div class="checkbox-group">
+                    <label>
+                        <input type="checkbox" id="zebra-striping" checked>
+                        Use zebra striping for rows
+                    </label>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="header-tab">
+                <h2>Header & Footer</h2>
+                
+                <div class="checkbox-group">
+                    <label>
+                        <input type="checkbox" id="include-header" checked>
+                        Include table header
+                    </label>
+                </div>
+                
+                <div class="checkbox-group">
+                    <label>
+                        <input type="checkbox" id="include-footer" checked>
+                        Include document footer
+                    </label>
+                </div>
+                
+                <div class="checkbox-group">
+                    <label>
+                        <input type="checkbox" id="include-page-numbers" checked>
+                        Include page numbers
+                    </label>
+                </div>
+                
+                <div class="checkbox-group">
+                    <label>
+                        <input type="checkbox" id="include-timestamp" checked>
+                        Include timestamp in footer
+                    </label>
+                </div>
+                
+                <div class="form-group">
+                    <label for="header-text">Custom Header Text</label>
+                    <input type="text" id="header-text" placeholder="Optional custom header text">
+                </div>
+                
+                <div class="form-group">
+                    <label for="footer-text">Custom Footer Text</label>
+                    <input type="text" id="footer-text" placeholder="Optional custom footer text">
+                </div>
+            </div>
+        </div>
+        
+        <div style="text-align: center;">
+            <button id="generate-button" class="btn btn-primary" disabled>Generate Styled PDF</button>
+        </div>
+        
+        <div id="progress-container" class="progress-container">
+            <div class="progress-bar">
+                <div id="progress" class="progress"></div>
+            </div>
+            <div id="status-message" class="status-message">Ready to process...</div>
+        </div>
+    </div>
+
+    <!-- Include jsPDF library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/3.0.0/jspdf.umd.min.js"></script>
+    
+    <!-- Include PapaParse for CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    
+    <!-- Include our library files -->
+    <script src="../js/utils.js"></script>
+    <script src="../js/csv-parser.js"></script>
+    <script src="../js/pdf-generator.js"></script>
+    <script src="../js/app.js"></script>
+    
+    <script>
+        // Initialize the application when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Tab functionality
+            const tabs = document.querySelectorAll('.tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const tabId = tab.getAttribute('data-tab');
+                    
+                    // Update active tab
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    // Update active content
+                    tabContents.forEach(content => {
+                        content.classList.remove('active');
+                        if (content.id === `${tabId}-tab`) {
+                            content.classList.add('active');
+                        }
+                    });
+                });
+            });
+            
+            // Color picker functionality
+            const headerBgColor = document.getElementById('header-bg-color');
+            const headerBgColorText = document.getElementById('header-bg-color-text');
+            const altRowBgColor = document.getElementById('alt-row-bg-color');
+            const altRowBgColorText = document.getElementById('alt-row-bg-color-text');
+            
+            headerBgColor.addEventListener('input', function() {
+                headerBgColorText.textContent = this.value;
+            });
+            
+            altRowBgColor.addEventListener('input', function() {
+                altRowBgColorText.textContent = this.value;
+            });
+            
+            // Initialize the application with custom styling options
+            const app = new CSVtoPDFApp({
+                // UI element IDs
+                dropZoneId: 'drop-zone',
+                fileInputId: 'file-input',
+                browseButtonId: 'browse-button',
+                generateButtonId: 'generate-button',
+                progressContainerId: 'progress-container',
+                progressBarId: 'progress',
+                statusMessageId: 'status-message',
+                settingsPanelId: 'settings-panel',
+                
+                // Custom styling options
+                pdfOptions: {
+                    pageSize: 'a4',
+                    orientation: 'portrait',
+                    margins: {
+                        top: 20,
+                        right: 15,
+                        bottom: 25,
+                        left: 15
+                    },
+                    includeHeader: true,
+                    includeFooter: true,
+                    includePageNumbers: true,
+                    title: '',
+                    author: '',
+                    fontSize: 10,
+                    cellPadding: 2,
+                    headerFillColor: hexToRgb(headerBgColor.value),
+                    alternateRowFillColor: hexToRgb(altRowBgColor.value)
+                }
+            });
+            
+            // Helper function to convert hex to RGB array
+            function hexToRgb(hex) {
+                hex = hex.replace('#', '');
+                const r = parseInt(hex.substring(0, 2), 16);
+                const g = parseInt(hex.substring(2, 4), 16);
+                const b = parseInt(hex.substring(4, 6), 16);
+                return [r, g, b];
+            }
+            
+            // Connect all settings to app configuration
+            
+            // General settings
+            document.getElementById('page-size').addEventListener('change', function() {
+                app.updatePdfOptions({ pageSize: this.value });
+            });
+            
+            document.getElementById('orientation').addEventListener('change', function() {
+                app.updatePdfOptions({ orientation: this.value });
+            });
+            
+            document.getElementById('title').addEventListener('input', function() {
+                app.updatePdfOptions({ title: this.value });
+            });
+            
+            document.getElementById('author').addEventListener('input', function() {
+                app.updatePdfOptions({ author: this.value });
+            });
+            
+            document.getElementById('filename').addEventListener('input', function() {
+                app.updatePdfOptions({ filename: this.value });
+            });
+            
+            // Table styling
+            document.getElementById('font-size').addEventListener('change', function() {
+                app.updatePdfOptions({ fontSize: parseInt(this.value) });
+            });
+            
+            document.getElementById('cell-padding').addEventListener('change', function() {
+                app.updatePdfOptions({ cellPadding: parseInt(this.value) });
+            });
+            
+            headerBgColor.addEventListener('change', function() {
+                app.updatePdfOptions({ headerFillColor: hexToRgb(this.value) });
+            });
+            
+            altRowBgColor.addEventListener('change', function() {
+                app.updatePdfOptions({ alternateRowFillColor: hexToRgb(this.value) });
+            });
+            
+            document.getElementById('include-borders').addEventListener('change', function() {
+                app.updatePdfOptions({ includeBorders: this.checked });
+            });
+            
+            document.getElementById('zebra-striping').addEventListener('change', function() {
+                app.updatePdfOptions({ useZebraStriping: this.checked });
+            });
+            
+            // Header & Footer
+            document.getElementById('include-header').addEventListener('change', function() {
+                app.updatePdfOptions({ includeHeader: this.checked });
+            });
+            
+            document.getElementById('include-footer').addEventListener('change', function() {
+                app.updatePdfOptions({ includeFooter: this.checked });
+            });
+            
+            document.getElementById('include-page-numbers').addEventListener('change', function() {
+                app.updatePdfOptions({ includePageNumbers: this.checked });
+            });
+            
+            document.getElementById('include-timestamp').addEventListener('change', function() {
+                app.updatePdfOptions({ includeTimestamp: this.checked });
+            });
+            
+            document.getElementById('header-text').addEventListener('input', function() {
+                app.updatePdfOptions({ headerText: this.value });
+            });
+            
+            document.getElementById('footer-text').addEventListener('input', function() {
+                app.updatePdfOptions({ footerText: this.value });
+            });
+        });
+    </script>
+</body>
+</html>
