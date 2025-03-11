@@ -99,30 +99,247 @@
     </div>
 
     <!-- Include jsPDF library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/3.0.0/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/jspdf@latest/dist/jspdf.umd.min.js"></script>
     
     <!-- Include PapaParse for CSV parsing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     
-    <!-- Include our library files -->
-    <script src="../js/utils.js"></script>
-    <script src="../js/csv-parser.js"></script>
-    <script src="../js/pdf-generator.js"></script>
-    <script src="../js/app.js"></script>
-    
     <script>
         // Initialize the application when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize the application
-            const app = new CSVtoPDFApp({
-                dropZoneId: 'drop-zone',
-                fileInputId: 'file-input',
-                browseButtonId: 'browse-button',
-                generateButtonId: 'generate-button',
-                progressContainerId: 'progress-container',
-                progressBarId: 'progress',
-                statusMessageId: 'status-message'
+            // Get DOM elements
+            const dropZone = document.getElementById('drop-zone');
+            const fileInput = document.getElementById('file-input');
+            const browseButton = document.getElementById('browse-button');
+            const generateButton = document.getElementById('generate-button');
+            const progressContainer = document.getElementById('progress-container');
+            const progressBar = document.getElementById('progress');
+            const statusMessage = document.getElementById('status-message');
+            
+            // Application state
+            let selectedFile = null;
+            
+            // Setup browse button
+            browseButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                fileInput.click();
             });
+            
+            // Setup file input change handler
+            fileInput.addEventListener('change', function() {
+                if (fileInput.files.length === 0) {
+                    return;
+                }
+                
+                const file = fileInput.files[0];
+                
+                // Check if it's a CSV file
+                if (file && (file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv'))) {
+                    selectedFile = file;
+                    generateButton.disabled = false;
+                    
+                    // Display filename in drop zone
+                    const fileNameElement = dropZone.querySelector('p');
+                    fileNameElement.textContent = `Selected file: ${file.name}`;
+                } else {
+                    alert('Please select a valid CSV file.');
+                    fileInput.value = '';
+                }
+            });
+            
+            // Setup drop zone handlers
+            dropZone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                dropZone.classList.add('active');
+            });
+            
+            dropZone.addEventListener('dragleave', function() {
+                dropZone.classList.remove('active');
+            });
+            
+            dropZone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                dropZone.classList.remove('active');
+                
+                if (e.dataTransfer.files.length) {
+                    fileInput.files = e.dataTransfer.files;
+                    // Trigger change event manually
+                    const event = new Event('change');
+                    fileInput.dispatchEvent(event);
+                }
+            });
+            
+            // Setup generate button
+            generateButton.addEventListener('click', function() {
+                if (!selectedFile) return;
+                
+                // Show progress container
+                progressContainer.style.display = 'block';
+                
+                // Update status
+                statusMessage.textContent = 'Processing CSV file...';
+                
+                // Actually generate the PDF
+                generatePDF(selectedFile);
+            });
+            
+            // Function to generate PDF from CSV
+            async function generatePDF(csvFile) {
+                try {
+                    console.log('Generating PDF from:', csvFile);
+                    
+                    // Parse the CSV file
+                    const results = await parseCSV(csvFile);
+                    
+                    if (!results || !results.data || results.data.length === 0) {
+                        throw new Error('No data found in CSV file');
+                    }
+                    
+                    // Get headers (column names)
+                    const headers = Object.keys(results.data[0]);
+                    
+                    // Initialize jsPDF with better error handling
+                    let pdf;
+                    try {
+                        // Modern bundle from unpkg
+                        if (window.jspdf && window.jspdf.jsPDF) {
+                            pdf = new window.jspdf.jsPDF();
+                        } 
+                        // Legacy bundle
+                        else if (window.jsPDF) {
+                            pdf = new window.jsPDF();
+                        }
+                        // Try direct jsPDF object if it exists
+                        else if (typeof jsPDF !== 'undefined') {
+                            pdf = new jsPDF();
+                        }
+                        else {
+                            throw new Error('jsPDF library not found.');
+                        }
+                    } catch (e) {
+                        console.error('Error initializing jsPDF:', e);
+                        throw new Error('Could not initialize jsPDF. Make sure the library is properly loaded.');
+                    }
+                    
+                    // PDF settings
+                    const pageWidth = pdf.internal.pageSize.getWidth();
+                    const margin = 15;
+                    const usableWidth = pageWidth - (margin * 2);
+                    pdf.setFontSize(10);
+                    
+                    // Calculate column widths
+                    const colWidth = usableWidth / headers.length;
+                    
+                    // Start position
+                    let yPos = 20;
+                    
+                    // Add title
+                    pdf.setFont('helvetica', 'bold');
+                    pdf.setFontSize(16);
+                    pdf.text('CSV Data Export', pageWidth / 2, yPos, { align: 'center' });
+                    yPos += 10;
+                    
+                    // Reset font for table
+                    pdf.setFont('helvetica', 'normal');
+                    pdf.setFontSize(10);
+                    
+                    // Add header row with light gray background
+                    pdf.setFillColor(240, 240, 240);
+                    pdf.rect(margin, yPos - 5, usableWidth, 10, 'F');
+                    
+                    pdf.setFont('helvetica', 'bold');
+                    headers.forEach((header, i) => {
+                        pdf.text(String(header), margin + (i * colWidth) + 2, yPos);
+                    });
+                    pdf.setFont('helvetica', 'normal');
+                    
+                    yPos += 10;
+                    
+                    // Initialize progress
+                    let progress = 0;
+                    const totalRows = results.data.length;
+                    let rowsPerPage = 35; // Approximate number of rows per page
+                    let currentPage = 1;
+                    
+                    // Process data rows
+                    for (let i = 0; i < totalRows; i++) {
+                        const row = results.data[i];
+                        
+                        // Check if we need a new page
+                        if (i > 0 && i % rowsPerPage === 0) {
+                            pdf.addPage();
+                            currentPage++;
+                            yPos = 20;
+                            
+                            // Re-add header on new page
+                            pdf.setFillColor(240, 240, 240);
+                            pdf.rect(margin, yPos - 5, usableWidth, 10, 'F');
+                            
+                            pdf.setFont('helvetica', 'bold');
+                            headers.forEach((header, i) => {
+                                pdf.text(String(header), margin + (i * colWidth) + 2, yPos);
+                            });
+                            pdf.setFont('helvetica', 'normal');
+                            
+                            yPos += 10;
+                        }
+                        
+                        // Add row data (with zebra striping)
+                        if (i % 2 === 1) {
+                            pdf.setFillColor(248, 248, 248);
+                            pdf.rect(margin, yPos - 5, usableWidth, 10, 'F');
+                        }
+                        
+                        headers.forEach((header, j) => {
+                            const cellValue = row[header] || '';
+                            // Truncate long values to prevent overflow
+                            pdf.text(String(cellValue).substring(0, 15), margin + (j * colWidth) + 2, yPos);
+                        });
+                        
+                        yPos += 10;
+                        
+                        // Update progress
+                        progress = Math.round((i / totalRows) * 100);
+                        progressBar.style.width = `${progress}%`;
+                        statusMessage.textContent = `Processing: ${i + 1} of ${totalRows} rows | Page: ${currentPage}`;
+                        
+                        // Allow UI to update periodically
+                        if (i % 100 === 0) {
+                            await new Promise(resolve => setTimeout(resolve, 0));
+                        }
+                    }
+                    
+                    // Finalize and save the PDF
+                    progressBar.style.width = '100%';
+                    statusMessage.textContent = 'PDF generation complete! Downloading...';
+                    
+                    const filename = `${csvFile.name.replace('.csv', '')}_export.pdf`;
+                    pdf.save(filename);
+                    
+                    statusMessage.textContent = 'PDF downloaded successfully!';
+                } catch (error) {
+                    console.error('Error generating PDF:', error);
+                    statusMessage.textContent = `Error: ${error.message}`;
+                    progressBar.style.width = '0%';
+                }
+            }
+            
+            // Function to parse CSV with PapaParse
+            function parseCSV(file) {
+                return new Promise((resolve, reject) => {
+                    Papa.parse(file, {
+                        header: true,
+                        dynamicTyping: true,
+                        skipEmptyLines: true,
+                        complete: function(results) {
+                            resolve(results);
+                        },
+                        error: function(error) {
+                            reject(error);
+                        }
+                    });
+                });
+            }
         });
     </script>
 </body>

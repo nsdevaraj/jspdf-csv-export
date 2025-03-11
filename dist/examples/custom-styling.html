@@ -360,16 +360,10 @@
     </div>
 
     <!-- Include jsPDF library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/3.0.0/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/jspdf@latest/dist/jspdf.umd.min.js"></script>
     
     <!-- Include PapaParse for CSV parsing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
-    
-    <!-- Include our library files -->
-    <script src="../js/utils.js"></script>
-    <script src="../js/csv-parser.js"></script>
-    <script src="../js/pdf-generator.js"></script>
-    <script src="../js/app.js"></script>
     
     <script>
         // Initialize the application when DOM is loaded
@@ -410,39 +404,59 @@
                 altRowBgColorText.textContent = this.value;
             });
             
-            // Initialize the application with custom styling options
-            const app = new CSVtoPDFApp({
-                // UI element IDs
-                dropZoneId: 'drop-zone',
-                fileInputId: 'file-input',
-                browseButtonId: 'browse-button',
-                generateButtonId: 'generate-button',
-                progressContainerId: 'progress-container',
-                progressBarId: 'progress',
-                statusMessageId: 'status-message',
-                settingsPanelId: 'settings-panel',
-                
-                // Custom styling options
-                pdfOptions: {
-                    pageSize: 'a4',
-                    orientation: 'portrait',
-                    margins: {
-                        top: 20,
-                        right: 15,
-                        bottom: 25,
-                        left: 15
-                    },
-                    includeHeader: true,
-                    includeFooter: true,
-                    includePageNumbers: true,
-                    title: '',
-                    author: '',
-                    fontSize: 10,
-                    cellPadding: 2,
-                    headerFillColor: hexToRgb(headerBgColor.value),
-                    alternateRowFillColor: hexToRgb(altRowBgColor.value)
-                }
-            });
+            // Get DOM elements
+            const dropZone = document.getElementById('drop-zone');
+            const fileInput = document.getElementById('file-input');
+            const browseButton = document.getElementById('browse-button');
+            const generateButton = document.getElementById('generate-button');
+            const progressContainer = document.getElementById('progress-container');
+            const progressBar = document.getElementById('progress');
+            const statusMessage = document.getElementById('status-message');
+            
+            // Settings elements
+            const pageSizeSelect = document.getElementById('page-size');
+            const orientationSelect = document.getElementById('orientation');
+            const fontSizeSelect = document.getElementById('font-size');
+            const cellPaddingSelect = document.getElementById('cell-padding');
+            const titleInput = document.getElementById('title');
+            const authorInput = document.getElementById('author');
+            const filenameInput = document.getElementById('filename');
+            const includeBordersCheckbox = document.getElementById('include-borders');
+            const zebraStripingCheckbox = document.getElementById('zebra-striping');
+            const includeHeaderCheckbox = document.getElementById('include-header');
+            const includeFooterCheckbox = document.getElementById('include-footer');
+            const includePageNumbersCheckbox = document.getElementById('include-page-numbers');
+            const includeTimestampCheckbox = document.getElementById('include-timestamp');
+            const headerTextInput = document.getElementById('header-text');
+            const footerTextInput = document.getElementById('footer-text');
+            
+            // Application state
+            let selectedFile = null;
+            let pdfOptions = {
+                pageSize: 'a4',
+                orientation: 'portrait',
+                margins: {
+                    top: 20,
+                    right: 15,
+                    bottom: 25,
+                    left: 15
+                },
+                includeHeader: true,
+                includeFooter: true,
+                includePageNumbers: true,
+                includeTimestamp: true,
+                title: '',
+                author: '',
+                fontSize: 10,
+                cellPadding: 2,
+                headerFillColor: hexToRgb(headerBgColor.value),
+                alternateRowFillColor: hexToRgb(altRowBgColor.value),
+                includeBorders: true,
+                useZebraStriping: true,
+                filename: 'export.pdf',
+                headerText: '',
+                footerText: ''
+            };
             
             // Helper function to convert hex to RGB array
             function hexToRgb(hex) {
@@ -453,77 +467,432 @@
                 return [r, g, b];
             }
             
-            // Connect all settings to app configuration
+            // Update PDF options
+            function updatePdfOptions(newOptions) {
+                pdfOptions = Object.assign(pdfOptions, newOptions);
+                console.log('PDF options updated:', pdfOptions);
+            }
+            
+            // Setup browse button
+            browseButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                fileInput.click();
+            });
+            
+            // Setup file input change handler
+            fileInput.addEventListener('change', function() {
+                if (fileInput.files.length === 0) {
+                    return;
+                }
+                
+                const file = fileInput.files[0];
+                
+                // Check if it's a CSV file
+                if (file && (file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv'))) {
+                    selectedFile = file;
+                    generateButton.disabled = false;
+                    
+                    // Display filename in drop zone
+                    const fileNameElement = dropZone.querySelector('p');
+                    fileNameElement.textContent = `Selected file: ${file.name}`;
+                } else {
+                    alert('Please select a valid CSV file.');
+                    fileInput.value = '';
+                }
+            });
+            
+            // Setup drop zone handlers
+            dropZone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                dropZone.classList.add('active');
+            });
+            
+            dropZone.addEventListener('dragleave', function() {
+                dropZone.classList.remove('active');
+            });
+            
+            dropZone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                dropZone.classList.remove('active');
+                
+                if (e.dataTransfer.files.length) {
+                    fileInput.files = e.dataTransfer.files;
+                    // Trigger change event manually
+                    const event = new Event('change');
+                    fileInput.dispatchEvent(event);
+                }
+            });
+            
+            // Setup generate button
+            generateButton.addEventListener('click', function() {
+                if (!selectedFile) return;
+                
+                // Show progress container
+                progressContainer.style.display = 'block';
+                
+                // Update status
+                statusMessage.textContent = 'Processing CSV file...';
+                
+                // Actually generate the PDF
+                generatePDF(selectedFile, pdfOptions);
+            });
+            
+            // Function to generate PDF from CSV
+            async function generatePDF(csvFile, options) {
+                try {
+                    console.log('Generating PDF from:', csvFile, 'with options:', options);
+                    
+                    // Parse the CSV file
+                    const results = await parseCSV(csvFile);
+                    
+                    if (!results || !results.data || results.data.length === 0) {
+                        throw new Error('No data found in CSV file');
+                    }
+                    
+                    // Get headers (column names)
+                    const headers = Object.keys(results.data[0]);
+                    
+                    // Initialize jsPDF with better error handling
+                    let pdf;
+                    const pdfOptions = {
+                        orientation: options.orientation,
+                        unit: 'mm',
+                        format: options.pageSize
+                    };
+                    
+                    try {
+                        // Modern bundle from unpkg
+                        if (window.jspdf && window.jspdf.jsPDF) {
+                            pdf = new window.jspdf.jsPDF(pdfOptions);
+                        } 
+                        // Legacy bundle
+                        else if (window.jsPDF) {
+                            pdf = new window.jsPDF(pdfOptions);
+                        }
+                        // Try direct jsPDF object if it exists
+                        else if (typeof jsPDF !== 'undefined') {
+                            pdf = new jsPDF(pdfOptions);
+                        }
+                        else {
+                            throw new Error('jsPDF library not found.');
+                        }
+                    } catch (e) {
+                        console.error('Error initializing jsPDF:', e);
+                        throw new Error('Could not initialize jsPDF. Make sure the library is properly loaded.');
+                    }
+                    
+                    // Set document properties
+                    if (options.title) {
+                        pdf.setProperties({
+                            title: options.title,
+                            author: options.author || 'CSV Export Tool',
+                            subject: 'CSV Export',
+                            creator: 'CSV Export Tool'
+                        });
+                    }
+                    
+                    // PDF settings
+                    const pageWidth = pdf.internal.pageSize.getWidth();
+                    const pageHeight = pdf.internal.pageSize.getHeight();
+                    const margin = options.margins ? options.margins.left : 15;
+                    const topMargin = options.margins ? options.margins.top : 15;
+                    const bottomMargin = options.margins ? options.margins.bottom : 25;
+                    const usableWidth = pageWidth - (margin * 2);
+                    pdf.setFontSize(options.fontSize || 10);
+                    
+                    // Calculate column widths
+                    const colWidth = usableWidth / headers.length;
+                    
+                    // Start position
+                    let yPos = topMargin + 10;
+                    
+                    // Add title if specified
+                    if (options.title) {
+                        pdf.setFont('helvetica', 'bold');
+                        pdf.setFontSize((options.fontSize || 10) + 6);
+                        pdf.text(options.title, pageWidth / 2, yPos, { align: 'center' });
+                        yPos += 10;
+                    }
+                    
+                    // Add custom header text if specified
+                    if (options.headerText) {
+                        pdf.setFont('helvetica', 'italic');
+                        pdf.setFontSize((options.fontSize || 10) + 2);
+                        pdf.text(options.headerText, pageWidth / 2, yPos, { align: 'center' });
+                        yPos += 8;
+                    }
+                    
+                    // Reset font for table
+                    pdf.setFont('helvetica', 'normal');
+                    pdf.setFontSize(options.fontSize || 10);
+                    
+                    // Cell padding
+                    const cellPadding = options.cellPadding || 2;
+                    const rowHeight = (options.fontSize || 10) * 0.5 + (cellPadding * 2);
+                    
+                    // Add header row if requested
+                    if (options.includeHeader) {
+                        // Use custom header colors if provided
+                        const headerFillColor = options.headerFillColor || [240, 240, 240];
+                        pdf.setFillColor(headerFillColor[0], headerFillColor[1], headerFillColor[2]);
+                        pdf.rect(margin, yPos - (rowHeight / 2), usableWidth, rowHeight, 'F');
+                        
+                        // Add borders if requested
+                        if (options.includeBorders) {
+                            pdf.setDrawColor(180, 180, 180);
+                            pdf.rect(margin, yPos - (rowHeight / 2), usableWidth, rowHeight, 'S');
+                            
+                            // Vertical lines between columns
+                            for (let i = 1; i < headers.length; i++) {
+                                pdf.line(
+                                    margin + (i * colWidth), 
+                                    yPos - (rowHeight / 2),
+                                    margin + (i * colWidth),
+                                    yPos + (rowHeight / 2)
+                                );
+                            }
+                        }
+                        
+                        pdf.setFont('helvetica', 'bold');
+                        headers.forEach((header, i) => {
+                            pdf.text(String(header), margin + (i * colWidth) + cellPadding, yPos);
+                        });
+                        pdf.setFont('helvetica', 'normal');
+                        
+                        yPos += rowHeight;
+                    }
+                    
+                    // Initialize progress
+                    let progress = 0;
+                    const totalRows = results.data.length;
+                    let currentPage = 1;
+                    
+                    // Process data rows
+                    for (let i = 0; i < totalRows; i++) {
+                        const row = results.data[i];
+                        
+                        // Check if we need a new page
+                        if (yPos > pageHeight - (options.includeFooter ? 25 : bottomMargin)) {
+                            // Add footer if requested
+                            if (options.includeFooter) {
+                                addFooter(pdf, currentPage, pageWidth, pageHeight, options);
+                            }
+                            
+                            pdf.addPage();
+                            currentPage++;
+                            yPos = topMargin + 10;
+                            
+                            // Re-add header on new page if requested
+                            if (options.includeHeader) {
+                                const headerFillColor = options.headerFillColor || [240, 240, 240];
+                                pdf.setFillColor(headerFillColor[0], headerFillColor[1], headerFillColor[2]);
+                                pdf.rect(margin, yPos - (rowHeight / 2), usableWidth, rowHeight, 'F');
+                                
+                                // Add borders if requested
+                                if (options.includeBorders) {
+                                    pdf.setDrawColor(180, 180, 180);
+                                    pdf.rect(margin, yPos - (rowHeight / 2), usableWidth, rowHeight, 'S');
+                                    
+                                    // Vertical lines between columns
+                                    for (let i = 1; i < headers.length; i++) {
+                                        pdf.line(
+                                            margin + (i * colWidth), 
+                                            yPos - (rowHeight / 2),
+                                            margin + (i * colWidth),
+                                            yPos + (rowHeight / 2)
+                                        );
+                                    }
+                                }
+                                
+                                pdf.setFont('helvetica', 'bold');
+                                headers.forEach((header, i) => {
+                                    pdf.text(String(header), margin + (i * colWidth) + cellPadding, yPos);
+                                });
+                                pdf.setFont('helvetica', 'normal');
+                                
+                                yPos += rowHeight;
+                            }
+                        }
+                        
+                        // Add row data with zebra striping
+                        if (options.useZebraStriping && i % 2 === 1) {
+                            const altRowFillColor = options.alternateRowFillColor || [248, 248, 248];
+                            pdf.setFillColor(altRowFillColor[0], altRowFillColor[1], altRowFillColor[2]);
+                            pdf.rect(margin, yPos - (rowHeight / 2), usableWidth, rowHeight, 'F');
+                        }
+                        
+                        // Add borders if requested
+                        if (options.includeBorders) {
+                            pdf.setDrawColor(180, 180, 180);
+                            pdf.rect(margin, yPos - (rowHeight / 2), usableWidth, rowHeight, 'S');
+                            
+                            // Vertical lines between columns
+                            for (let i = 1; i < headers.length; i++) {
+                                pdf.line(
+                                    margin + (i * colWidth), 
+                                    yPos - (rowHeight / 2),
+                                    margin + (i * colWidth),
+                                    yPos + (rowHeight / 2)
+                                );
+                            }
+                        }
+                        
+                        headers.forEach((header, j) => {
+                            const cellValue = row[header] || '';
+                            // Truncate long values to prevent overflow
+                            pdf.text(String(cellValue).substring(0, 15), margin + (j * colWidth) + cellPadding, yPos);
+                        });
+                        
+                        yPos += rowHeight;
+                        
+                        // Update progress
+                        progress = Math.round((i / totalRows) * 100);
+                        progressBar.style.width = `${progress}%`;
+                        statusMessage.textContent = `Processing: ${i + 1} of ${totalRows} rows | Page: ${currentPage}`;
+                        
+                        // Allow UI to update periodically
+                        if (i % 100 === 0) {
+                            await new Promise(resolve => setTimeout(resolve, 0));
+                        }
+                    }
+                    
+                    // Add footer to last page if requested
+                    if (options.includeFooter) {
+                        addFooter(pdf, currentPage, pageWidth, pageHeight, options);
+                    }
+                    
+                    // Finalize and save the PDF
+                    progressBar.style.width = '100%';
+                    statusMessage.textContent = 'PDF generation complete! Downloading...';
+                    
+                    const filename = options.filename || `${csvFile.name.replace('.csv', '')}_export.pdf`;
+                    pdf.save(filename);
+                    
+                    statusMessage.textContent = 'PDF downloaded successfully!';
+                } catch (error) {
+                    console.error('Error generating PDF:', error);
+                    statusMessage.textContent = `Error: ${error.message}`;
+                    progressBar.style.width = '0%';
+                }
+            }
+            
+            // Add footer to PDF page
+            function addFooter(pdf, pageNumber, pageWidth, pageHeight, options) {
+                const fontSize = 8;
+                const oldFontSize = pdf.getFontSize();
+                pdf.setFontSize(fontSize);
+                pdf.setFont('helvetica', 'italic');
+                
+                // Page number if requested
+                if (options.includePageNumbers) {
+                    pdf.text(`Page ${pageNumber}`, pageWidth - 20, pageHeight - 10);
+                }
+                
+                // Add timestamp if requested
+                if (options.includeTimestamp) {
+                    const now = new Date();
+                    const timestamp = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
+                    pdf.text(`Generated on ${timestamp}`, 20, pageHeight - 10);
+                }
+                
+                // Add custom footer text if provided
+                if (options.footerText) {
+                    pdf.text(options.footerText, pageWidth / 2, pageHeight - 10, { align: 'center' });
+                }
+                
+                // Restore font settings
+                pdf.setFontSize(oldFontSize);
+                pdf.setFont('helvetica', 'normal');
+            }
+            
+            // Function to parse CSV with PapaParse
+            function parseCSV(file) {
+                return new Promise((resolve, reject) => {
+                    Papa.parse(file, {
+                        header: true,
+                        dynamicTyping: true,
+                        skipEmptyLines: true,
+                        complete: function(results) {
+                            resolve(results);
+                        },
+                        error: function(error) {
+                            reject(error);
+                        }
+                    });
+                });
+            }
+            
+            // Connect all settings to configuration
             
             // General settings
-            document.getElementById('page-size').addEventListener('change', function() {
-                app.updatePdfOptions({ pageSize: this.value });
+            pageSizeSelect.addEventListener('change', function() {
+                updatePdfOptions({ pageSize: this.value });
             });
             
-            document.getElementById('orientation').addEventListener('change', function() {
-                app.updatePdfOptions({ orientation: this.value });
+            orientationSelect.addEventListener('change', function() {
+                updatePdfOptions({ orientation: this.value });
             });
             
-            document.getElementById('title').addEventListener('input', function() {
-                app.updatePdfOptions({ title: this.value });
+            titleInput.addEventListener('input', function() {
+                updatePdfOptions({ title: this.value });
             });
             
-            document.getElementById('author').addEventListener('input', function() {
-                app.updatePdfOptions({ author: this.value });
+            authorInput.addEventListener('input', function() {
+                updatePdfOptions({ author: this.value });
             });
             
-            document.getElementById('filename').addEventListener('input', function() {
-                app.updatePdfOptions({ filename: this.value });
+            filenameInput.addEventListener('input', function() {
+                updatePdfOptions({ filename: this.value });
             });
             
             // Table styling
-            document.getElementById('font-size').addEventListener('change', function() {
-                app.updatePdfOptions({ fontSize: parseInt(this.value) });
+            fontSizeSelect.addEventListener('change', function() {
+                updatePdfOptions({ fontSize: parseInt(this.value) });
             });
             
-            document.getElementById('cell-padding').addEventListener('change', function() {
-                app.updatePdfOptions({ cellPadding: parseInt(this.value) });
+            cellPaddingSelect.addEventListener('change', function() {
+                updatePdfOptions({ cellPadding: parseInt(this.value) });
             });
             
             headerBgColor.addEventListener('change', function() {
-                app.updatePdfOptions({ headerFillColor: hexToRgb(this.value) });
+                updatePdfOptions({ headerFillColor: hexToRgb(this.value) });
             });
             
             altRowBgColor.addEventListener('change', function() {
-                app.updatePdfOptions({ alternateRowFillColor: hexToRgb(this.value) });
+                updatePdfOptions({ alternateRowFillColor: hexToRgb(this.value) });
             });
             
-            document.getElementById('include-borders').addEventListener('change', function() {
-                app.updatePdfOptions({ includeBorders: this.checked });
+            includeBordersCheckbox.addEventListener('change', function() {
+                updatePdfOptions({ includeBorders: this.checked });
             });
             
-            document.getElementById('zebra-striping').addEventListener('change', function() {
-                app.updatePdfOptions({ useZebraStriping: this.checked });
+            zebraStripingCheckbox.addEventListener('change', function() {
+                updatePdfOptions({ useZebraStriping: this.checked });
             });
             
             // Header & Footer
-            document.getElementById('include-header').addEventListener('change', function() {
-                app.updatePdfOptions({ includeHeader: this.checked });
+            includeHeaderCheckbox.addEventListener('change', function() {
+                updatePdfOptions({ includeHeader: this.checked });
             });
             
-            document.getElementById('include-footer').addEventListener('change', function() {
-                app.updatePdfOptions({ includeFooter: this.checked });
+            includeFooterCheckbox.addEventListener('change', function() {
+                updatePdfOptions({ includeFooter: this.checked });
             });
             
-            document.getElementById('include-page-numbers').addEventListener('change', function() {
-                app.updatePdfOptions({ includePageNumbers: this.checked });
+            includePageNumbersCheckbox.addEventListener('change', function() {
+                updatePdfOptions({ includePageNumbers: this.checked });
             });
             
-            document.getElementById('include-timestamp').addEventListener('change', function() {
-                app.updatePdfOptions({ includeTimestamp: this.checked });
+            includeTimestampCheckbox.addEventListener('change', function() {
+                updatePdfOptions({ includeTimestamp: this.checked });
             });
             
-            document.getElementById('header-text').addEventListener('input', function() {
-                app.updatePdfOptions({ headerText: this.value });
+            headerTextInput.addEventListener('input', function() {
+                updatePdfOptions({ headerText: this.value });
             });
             
-            document.getElementById('footer-text').addEventListener('input', function() {
-                app.updatePdfOptions({ footerText: this.value });
+            footerTextInput.addEventListener('input', function() {
+                updatePdfOptions({ footerText: this.value });
             });
         });
     </script>

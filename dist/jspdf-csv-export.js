@@ -1043,5 +1043,175 @@ document.addEventListener('DOMContentLoaded', () => {
   resetUI();
 });
 
+// CSVtoPDFApp Class Definition
+/**
+ * CSVtoPDFApp - Main application class for the CSV to PDF export functionality
+ */
+class CSVtoPDFApp {
+  /**
+   * Initialize the application
+   * @param {Object} options - Configuration options
+   */
+  constructor(options = {}) {
+    // Store options
+    this.options = Object.assign({
+      // UI elements
+      dropZoneId: 'drop-zone',
+      fileInputId: 'file-input',
+      browseButtonId: 'browse-button',
+      generateButtonId: 'generate-button',
+      progressContainerId: 'progress-container',
+      progressBarId: 'progress',
+      statusMessageId: 'status-message',
+      settingsPanelId: null,
+      
+      // Callbacks
+      onStart: null,
+      onProgress: null,
+      onComplete: null,
+      onError: null,
+      
+      // PDF options
+      pdfOptions: {
+        pageSize: 'a4',
+        orientation: 'portrait',
+        margins: { top: 20, right: 15, bottom: 25, left: 15 },
+        includeHeader: true,
+        includeFooter: true,
+        includePageNumbers: true,
+        title: '',
+        author: '',
+        fontSize: 10
+      }
+    }, options);
+    
+    // Get DOM elements
+    this.dropZone = document.getElementById(this.options.dropZoneId);
+    this.fileInput = document.getElementById(this.options.fileInputId);
+    this.browseButton = document.getElementById(this.options.browseButtonId);
+    this.generateButton = document.getElementById(this.options.generateButtonId);
+    this.progressContainer = document.getElementById(this.options.progressContainerId);
+    this.progressBar = document.getElementById(this.options.progressBarId);
+    this.statusMessage = document.getElementById(this.options.statusMessageId);
+    this.settingsPanel = this.options.settingsPanelId ? document.getElementById(this.options.settingsPanelId) : null;
+    
+    // Setup initial state
+    this.selectedFile = null;
+    this.csvParser = null;
+    this.pdfGenerator = null;
+    
+    // Initialize the application
+    this.initialize();
+  }
+  
+  /**
+   * Initialize application event listeners
+   */
+  initialize() {
+    // Setup file input change handler
+    this.fileInput.addEventListener('change', this.handleFileSelection.bind(this));
+    
+    // Setup browse button click handler
+    if (this.browseButton) {
+      this.browseButton.addEventListener('click', () => {
+        this.fileInput.click();
+      });
+    }
+    
+    // Setup drop zone handlers
+    if (this.dropZone) {
+      this.dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        this.dropZone.classList.add('active');
+      });
+      
+      this.dropZone.addEventListener('dragleave', () => {
+        this.dropZone.classList.remove('active');
+      });
+      
+      this.dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        this.dropZone.classList.remove('active');
+        
+        if (e.dataTransfer.files.length) {
+          this.fileInput.files = e.dataTransfer.files;
+          this.handleFileSelection();
+        }
+      });
+    }
+    
+    // Setup generate button
+    if (this.generateButton) {
+      this.generateButton.addEventListener('click', this.generatePDF.bind(this));
+    }
+  }
+  
+  /**
+   * Handle file selection
+   */
+  handleFileSelection() {
+    if (this.fileInput.files.length === 0) {
+      return;
+    }
+    
+    const file = this.fileInput.files[0];
+    
+    // Check if it's a CSV file
+    if (file && (file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv'))) {
+      this.selectedFile = file;
+      this.generateButton.disabled = false;
+      
+      // Display filename in drop zone
+      if (this.dropZone) {
+        const fileNameElement = this.dropZone.querySelector('p') || document.createElement('p');
+        fileNameElement.textContent = `Selected file: ${file.name}`;
+        if (!this.dropZone.contains(fileNameElement)) {
+          this.dropZone.appendChild(fileNameElement);
+        }
+      }
+    } else {
+      alert('Please select a valid CSV file.');
+      this.fileInput.value = '';
+    }
+  }
+  
+  /**
+   * Generate PDF from CSV
+   */
+  async generatePDF() {
+    if (!this.selectedFile) return;
+    
+    // Call onStart callback if provided
+    if (typeof this.options.onStart === 'function') {
+      this.options.onStart();
+    }
+    
+    // Show progress container
+    if (this.progressContainer) {
+      this.progressContainer.style.display = 'block';
+    }
+    
+    // Update status
+    if (this.statusMessage) {
+      this.statusMessage.textContent = 'Processing CSV file...';
+    }
+    
+    // Process will be implemented in later versions
+    console.log('Generating PDF from:', this.selectedFile);
+  }
+  
+  /**
+   * Update PDF options
+   * @param {Object} newOptions - New PDF options
+   */
+  updatePdfOptions(newOptions) {
+    this.options.pdfOptions = Object.assign(this.options.pdfOptions, newOptions);
+    console.log('PDF options updated:', this.options.pdfOptions);
+  }
+}
+
+// Export for use in other modules
+window.CSVtoPDFApp = CSVtoPDFApp;
+
 
 })(typeof window !== "undefined" ? window : this);

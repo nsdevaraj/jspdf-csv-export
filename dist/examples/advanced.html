@@ -245,114 +245,430 @@
     </div>
 
     <!-- Include jsPDF library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/3.0.0/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/jspdf@latest/dist/jspdf.umd.min.js"></script>
     
     <!-- Include PapaParse for CSV parsing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     
-    <!-- Include our library files -->
-    <script src="../js/utils.js"></script>
-    <script src="../js/csv-parser.js"></script>
-    <script src="../js/pdf-generator.js"></script>
-    <script src="../js/app.js"></script>
-    
     <script>
         // Initialize the application when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
+            // Get DOM elements
+            const dropZone = document.getElementById('drop-zone');
+            const fileInput = document.getElementById('file-input');
+            const browseButton = document.getElementById('browse-button');
+            const generateButton = document.getElementById('generate-button');
+            const progressContainer = document.getElementById('progress-container');
+            const progressBar = document.getElementById('progress');
+            const statusMessage = document.getElementById('status-message');
             const statsContainer = document.getElementById('stats-container');
             const statsBody = document.getElementById('stats-body');
+            const performanceDataEl = document.createElement('div');
+            performanceDataEl.id = 'performance-data';
+            progressContainer.appendChild(performanceDataEl);
             
-            // Initialize the application with advanced options
-            const app = new CSVtoPDFApp({
-                // UI element IDs
-                dropZoneId: 'drop-zone',
-                fileInputId: 'file-input',
-                browseButtonId: 'browse-button',
-                generateButtonId: 'generate-button',
-                progressContainerId: 'progress-container',
-                progressBarId: 'progress',
-                statusMessageId: 'status-message',
-                settingsPanelId: 'settings-panel',
+            // Settings elements
+            const pageSizeSelect = document.getElementById('page-size');
+            const orientationSelect = document.getElementById('orientation');
+            const fontSizeSelect = document.getElementById('font-size');
+            const titleInput = document.getElementById('title');
+            const authorInput = document.getElementById('author');
+            const includeHeaderCheckbox = document.getElementById('include-header');
+            const includeFooterCheckbox = document.getElementById('include-footer');
+            const includePageNumbersCheckbox = document.getElementById('include-page-numbers');
+            
+            // Application state
+            let selectedFile = null;
+            let pdfOptions = {
+                pageSize: 'a4',
+                orientation: 'portrait',
+                fontSize: 10,
+                includeHeader: true,
+                includeFooter: true,
+                includePageNumbers: true,
+                title: '',
+                author: ''
+            };
+            
+            // Update PDF options
+            function updatePdfOptions(newOptions) {
+                pdfOptions = Object.assign(pdfOptions, newOptions);
+                console.log('PDF options updated:', pdfOptions);
+            }
+            
+            // Setup browse button
+            browseButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                fileInput.click();
+            });
+            
+            // Setup file input change handler
+            fileInput.addEventListener('change', function() {
+                if (fileInput.files.length === 0) {
+                    return;
+                }
                 
-                // Advanced callbacks
-                onStart: () => {
-                    console.log('Starting PDF generation process');
+                const file = fileInput.files[0];
+                
+                // Check if it's a CSV file
+                if (file && (file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv'))) {
+                    selectedFile = file;
+                    generateButton.disabled = false;
+                    
+                    // Display filename in drop zone
+                    const fileNameElement = dropZone.querySelector('p');
+                    fileNameElement.textContent = `Selected file: ${file.name}`;
+                    
                     statsContainer.style.display = 'none';
-                    statsBody.innerHTML = '';
-                },
-                
-                onProgress: (processed, total, page) => {
-                    console.log(`Progress: ${processed}/${total} rows (${Math.round((processed/total)*100)}%) - Page ${page}`);
-                },
-                
-                onComplete: (stats) => {
-                    console.log('PDF generation complete', stats);
-                    
-                    // Display performance statistics
-                    statsContainer.style.display = 'block';
-                    
-                    const metricsToShow = [
-                        { name: 'Total Rows', value: stats.totalRows },
-                        { name: 'Total Pages', value: stats.totalPages },
-                        { name: 'Processing Time', value: `${stats.processingTime.toFixed(2)} seconds` },
-                        { name: 'Rows Per Second', value: Math.round(stats.rowsPerSecond) },
-                        { name: 'Peak Memory Usage', value: `${stats.peakMemoryUsage} MB` },
-                        { name: 'Chunk Count', value: stats.chunkCount },
-                        { name: 'Average Chunk Size', value: Math.round(stats.avgChunkSize) }
-                    ];
-                    
-                    metricsToShow.forEach(metric => {
-                        const row = document.createElement('tr');
-                        
-                        const nameCell = document.createElement('td');
-                        nameCell.textContent = metric.name;
-                        
-                        const valueCell = document.createElement('td');
-                        valueCell.textContent = metric.value;
-                        
-                        row.appendChild(nameCell);
-                        row.appendChild(valueCell);
-                        
-                        statsBody.appendChild(row);
-                    });
-                },
-                
-                onError: (error) => {
-                    console.error('PDF generation error:', error);
+                } else {
+                    alert('Please select a valid CSV file.');
+                    fileInput.value = '';
                 }
             });
             
-            // Connect settings panel to app configuration
-            document.getElementById('page-size').addEventListener('change', function() {
-                app.updatePdfOptions({ pageSize: this.value });
+            // Setup drop zone handlers
+            dropZone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                dropZone.classList.add('active');
             });
             
-            document.getElementById('orientation').addEventListener('change', function() {
-                app.updatePdfOptions({ orientation: this.value });
+            dropZone.addEventListener('dragleave', function() {
+                dropZone.classList.remove('active');
             });
             
-            document.getElementById('font-size').addEventListener('change', function() {
-                app.updatePdfOptions({ fontSize: parseInt(this.value) });
+            dropZone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                dropZone.classList.remove('active');
+                
+                if (e.dataTransfer.files.length) {
+                    fileInput.files = e.dataTransfer.files;
+                    // Trigger change event manually
+                    const event = new Event('change');
+                    fileInput.dispatchEvent(event);
+                }
             });
             
-            document.getElementById('title').addEventListener('input', function() {
-                app.updatePdfOptions({ title: this.value });
+            // Setup generate button
+            generateButton.addEventListener('click', function() {
+                if (!selectedFile) return;
+                
+                // Show progress container
+                progressContainer.style.display = 'block';
+                
+                // Update status  
+                statusMessage.textContent = 'Processing CSV file...';
+                
+                // Get settings object
+                const settings = getSettings();
+                
+                // Actually generate the PDF
+                generatePDF(selectedFile, settings);
             });
             
-            document.getElementById('author').addEventListener('input', function() {
-                app.updatePdfOptions({ author: this.value });
+            // Function to generate PDF from CSV
+            async function generatePDF(csvFile, settings) {
+                try {
+                    console.log('Generating PDF from:', csvFile, 'with settings:', settings);
+                    
+                    // Parse the CSV file
+                    const results = await parseCSV(csvFile, settings.delimiter);
+                    
+                    if (!results || !results.data || results.data.length === 0) {
+                        throw new Error('No data found in CSV file');
+                    }
+                    
+                    // Get headers (column names)
+                    const headers = Object.keys(results.data[0]);
+                    
+                    // Start tracking performance
+                    const startTime = performance.now();
+                    
+                    // Initialize jsPDF with better error handling
+                    let pdf;
+                    const options = {
+                        orientation: settings.orientation,
+                        unit: 'mm',
+                        format: settings.pageSize
+                    };
+                    
+                    try {
+                        // Modern bundle from unpkg
+                        if (window.jspdf && window.jspdf.jsPDF) {
+                            pdf = new window.jspdf.jsPDF(options);
+                        } 
+                        // Legacy bundle
+                        else if (window.jsPDF) {
+                            pdf = new window.jsPDF(options);
+                        }
+                        // Try direct jsPDF object if it exists
+                        else if (typeof jsPDF !== 'undefined') {
+                            pdf = new jsPDF(options);
+                        }
+                        else {
+                            throw new Error('jsPDF library not found.');
+                        }
+                    } catch (e) {
+                        console.error('Error initializing jsPDF:', e);
+                        throw new Error('Could not initialize jsPDF. Make sure the library is properly loaded.');
+                    }
+                    
+                    // Set document properties
+                    pdf.setProperties({
+                        title: settings.docTitle || 'CSV Export',
+                        author: settings.author || 'CSV Export Tool',
+                        subject: 'CSV Export',
+                        creator: 'CSV Export Tool'
+                    });
+                    
+                    // PDF settings
+                    const pageWidth = pdf.internal.pageSize.getWidth();
+                    const pageHeight = pdf.internal.pageSize.getHeight();
+                    const margin = settings.margin || 15;
+                    const usableWidth = pageWidth - (margin * 2);
+                    pdf.setFontSize(settings.fontSize || 10);
+                    
+                    // Filter columns if needed
+                    let columnsToInclude = headers;
+                    if (settings.includeColumns && settings.includeColumns.length > 0) {
+                        columnsToInclude = headers.filter(header => settings.includeColumns.includes(header));
+                    }
+                    
+                    // Calculate column widths
+                    const colWidth = usableWidth / columnsToInclude.length;
+                    
+                    // Start position
+                    let yPos = margin + 10;
+                    
+                    // Add title if specified
+                    if (settings.docTitle) {
+                        pdf.setFont('helvetica', 'bold');
+                        pdf.setFontSize((settings.fontSize || 10) + 6);
+                        pdf.text(settings.docTitle, pageWidth / 2, yPos, { align: 'center' });
+                        yPos += 10;
+                    }
+                    
+                    // Reset font for table
+                    pdf.setFont('helvetica', 'normal');
+                    pdf.setFontSize(settings.fontSize || 10);
+                    
+                    // Cell height based on font size
+                    const rowHeight = (settings.fontSize || 10) * 0.5 + 6;
+                    
+                    // Add header row if requested
+                    if (settings.includeHeader) {
+                        pdf.setFillColor(240, 240, 240);
+                        pdf.rect(margin, yPos - (rowHeight / 2), usableWidth, rowHeight, 'F');
+                        
+                        pdf.setFont('helvetica', 'bold');
+                        columnsToInclude.forEach((header, i) => {
+                            pdf.text(String(header), margin + (i * colWidth) + 2, yPos);
+                        });
+                        pdf.setFont('helvetica', 'normal');
+                        
+                        yPos += rowHeight;
+                    }
+                    
+                    // Initialize progress
+                    let progress = 0;
+                    const totalRows = results.data.length;
+                    let processedRows = 0;
+                    let currentPage = 1;
+                    
+                    // Function to add footer to pages if needed
+                    const addFooter = (pageNum) => {
+                        if (settings.includePageNumbers) {
+                            const oldSize = pdf.getFontSize();
+                            pdf.setFontSize(8);
+                            pdf.text(`Page ${pageNum}`, pageWidth - 20, pageHeight - 10);
+                            pdf.setFontSize(oldSize);
+                        }
+                    };
+                    
+                    // Apply any row filter
+                    let filteredData = results.data;
+                    if (settings.maxRows && settings.maxRows > 0) {
+                        filteredData = results.data.slice(0, settings.maxRows);
+                    }
+                    
+                    // Sort data if requested
+                    if (settings.sortColumn && columnsToInclude.includes(settings.sortColumn)) {
+                        filteredData.sort((a, b) => {
+                            if (settings.sortDirection === 'desc') {
+                                return (a[settings.sortColumn] > b[settings.sortColumn]) ? -1 : 1;
+                            } else {
+                                return (a[settings.sortColumn] > b[settings.sortColumn]) ? 1 : -1;
+                            }
+                        });
+                    }
+                    
+                    // Process data rows
+                    for (let i = 0; i < filteredData.length; i++) {
+                        const row = filteredData[i];
+                        
+                        // Check if we need a new page
+                        if (yPos > pageHeight - (margin + rowHeight)) {
+                            addFooter(currentPage);
+                            pdf.addPage();
+                            currentPage++;
+                            yPos = margin + 10;
+                            
+                            // Re-add header on new page if requested
+                            if (settings.includeHeader) {
+                                pdf.setFillColor(240, 240, 240);
+                                pdf.rect(margin, yPos - (rowHeight / 2), usableWidth, rowHeight, 'F');
+                                
+                                pdf.setFont('helvetica', 'bold');
+                                columnsToInclude.forEach((header, i) => {
+                                    pdf.text(String(header), margin + (i * colWidth) + 2, yPos);
+                                });
+                                pdf.setFont('helvetica', 'normal');
+                                
+                                yPos += rowHeight;
+                            }
+                        }
+                        
+                        // Add row data with zebra striping if enabled
+                        if (settings.useZebraStriping && i % 2 === 1) {
+                            pdf.setFillColor(248, 248, 248);
+                            pdf.rect(margin, yPos - (rowHeight / 2), usableWidth, rowHeight, 'F');
+                        }
+                        
+                        // Add row data
+                        columnsToInclude.forEach((header, j) => {
+                            const cellValue = row[header] || '';
+                            // Format cell value based on column type
+                            let displayValue = String(cellValue);
+                            if (settings.numberFormat && typeof cellValue === 'number') {
+                                try {
+                                    displayValue = new Intl.NumberFormat(
+                                        settings.locale || 'en-US', 
+                                        { minimumFractionDigits: settings.decimals || 0 }
+                                    ).format(cellValue);
+                                } catch (e) {
+                                    console.warn('Number formatting error:', e);
+                                }
+                            }
+                            // Truncate long values to prevent overflow
+                            pdf.text(displayValue.substring(0, 20), margin + (j * colWidth) + 2, yPos);
+                        });
+                        
+                        yPos += rowHeight;
+                        processedRows++;
+                        
+                        // Update progress
+                        progress = Math.round((processedRows / filteredData.length) * 100);
+                        progressBar.style.width = `${progress}%`;
+                        statusMessage.textContent = `Processing: ${processedRows} of ${filteredData.length} rows | Page: ${currentPage}`;
+                        
+                        // Allow UI to update periodically
+                        if (i % 100 === 0) {
+                            await new Promise(resolve => setTimeout(resolve, 0));
+                        }
+                    }
+                    
+                    // Add footer to last page if needed
+                    if (settings.includePageNumbers) {
+                        addFooter(currentPage);
+                    }
+                    
+                    // Performance metrics
+                    const endTime = performance.now();
+                    const processingTime = Math.round(endTime - startTime);
+                    
+                    // Finalize and save the PDF
+                    progressBar.style.width = '100%';
+                    statusMessage.textContent = 'PDF generation complete! Downloading...';
+                    
+                    // Update performance metrics
+                    performanceDataEl.innerHTML = `
+                        <div class="performance-data">
+                            <p><strong>Rows processed:</strong> ${processedRows}</p>
+                            <p><strong>Pages generated:</strong> ${currentPage}</p>
+                            <p><strong>Processing time:</strong> ${processingTime}ms</p>
+                            <p><strong>Average:</strong> ${Math.round(processingTime / processedRows)}ms per row</p>
+                        </div>
+                    `;
+                    performanceDataEl.style.display = 'block';
+                    
+                    const filename = settings.filename || `${csvFile.name.replace('.csv', '')}_export.pdf`;
+                    pdf.save(filename);
+                    
+                    statusMessage.textContent = 'PDF downloaded successfully!';
+                } catch (error) {
+                    console.error('Error generating PDF:', error);
+                    statusMessage.textContent = `Error: ${error.message}`;
+                    progressBar.style.width = '0%';
+                }
+            }
+            
+            // Function to parse CSV with PapaParse
+            function parseCSV(file, delimiter = ',') {
+                return new Promise((resolve, reject) => {
+                    Papa.parse(file, {
+                        header: true,
+                        dynamicTyping: true,
+                        skipEmptyLines: true,
+                        delimiter: delimiter,
+                        complete: function(results) {
+                            resolve(results);
+                        },
+                        error: function(error) {
+                            reject(error);
+                        }
+                    });
+                });
+            }
+            
+            // Get all settings from form inputs
+            function getSettings() {
+                return {
+                    pageSize: pageSizeSelect.value,
+                    orientation: orientationSelect.value,
+                    fontSize: parseInt(fontSizeSelect.value),
+                    docTitle: titleInput.value,
+                    author: authorInput.value,
+                    includeHeader: includeHeaderCheckbox.checked,
+                    includeFooter: includeFooterCheckbox.checked,
+                    includePageNumbers: includePageNumbersCheckbox.checked,
+                    useZebraStriping: true,
+                    margin: 15,
+                    // Add default values for any options that might be missing
+                    delimiter: ',',
+                    numberFormat: false
+                };
+            }
+            
+            // Setup settings panel event listeners
+            pageSizeSelect.addEventListener('change', function() {
+                updatePdfOptions({ pageSize: this.value });
             });
             
-            document.getElementById('include-header').addEventListener('change', function() {
-                app.updatePdfOptions({ includeHeader: this.checked });
+            orientationSelect.addEventListener('change', function() {
+                updatePdfOptions({ orientation: this.value });
             });
             
-            document.getElementById('include-footer').addEventListener('change', function() {
-                app.updatePdfOptions({ includeFooter: this.checked });
+            fontSizeSelect.addEventListener('change', function() {
+                updatePdfOptions({ fontSize: parseInt(this.value) });
             });
             
-            document.getElementById('include-page-numbers').addEventListener('change', function() {
-                app.updatePdfOptions({ includePageNumbers: this.checked });
+            titleInput.addEventListener('input', function() {
+                updatePdfOptions({ title: this.value });
+            });
+            
+            authorInput.addEventListener('input', function() {
+                updatePdfOptions({ author: this.value });
+            });
+            
+            includeHeaderCheckbox.addEventListener('change', function() {
+                updatePdfOptions({ includeHeader: this.checked });
+            });
+            
+            includeFooterCheckbox.addEventListener('change', function() {
+                updatePdfOptions({ includeFooter: this.checked });
+            });
+            
+            includePageNumbersCheckbox.addEventListener('change', function() {
+                updatePdfOptions({ includePageNumbers: this.checked });
             });
         });
     </script>

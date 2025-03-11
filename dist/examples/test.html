@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>jsPDF and PapaParse Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow: auto;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .result {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>jsPDF and PapaParse Test</h1>
+    
+    <div>
+        <h2>Library Status</h2>
+        <pre id="library-status">Checking...</pre>
+    </div>
+    
+    <div>
+        <h2>Create a Simple PDF</h2>
+        <button id="pdf-button">Generate Test PDF</button>
+    </div>
+    
+    <div>
+        <h2>Parse CSV</h2>
+        <textarea id="csv-input" rows="5" cols="50">name,age,city
+John,30,New York
+Jane,25,Los Angeles
+Bob,40,Chicago</textarea>
+        <button id="parse-button">Parse CSV</button>
+    </div>
+    
+    <div class="result">
+        <h2>Result</h2>
+        <pre id="result">Run a test to see results</pre>
+    </div>
+
+    <!-- Include jsPDF library -->
+    <script src="https://unpkg.com/jspdf@latest/dist/jspdf.umd.min.js"></script>
+    
+    <!-- Include PapaParse for CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const libraryStatus = document.getElementById('library-status');
+            const pdfButton = document.getElementById('pdf-button');
+            const parseButton = document.getElementById('parse-button');
+            const csvInput = document.getElementById('csv-input');
+            const resultDisplay = document.getElementById('result');
+            
+            // Check library status
+            let jsPDFStatus = 'Not found';
+            let PapaStatus = 'Not found';
+            
+            if (window.jspdf && window.jspdf.jsPDF) {
+                jsPDFStatus = 'Available (window.jspdf.jsPDF)';
+            } else if (window.jsPDF) {
+                jsPDFStatus = 'Available (window.jsPDF)';
+            } else if (typeof jsPDF !== 'undefined') {
+                jsPDFStatus = 'Available (global jsPDF)';
+            }
+            
+            if (window.Papa) {
+                PapaStatus = 'Available (window.Papa)';
+            } else if (typeof Papa !== 'undefined') {
+                PapaStatus = 'Available (global Papa)';
+            }
+            
+            libraryStatus.textContent = `jsPDF: ${jsPDFStatus}\nPapaParse: ${PapaStatus}`;
+            
+            // PDF Generation test
+            pdfButton.addEventListener('click', function() {
+                try {
+                    // Try to create a PDF
+                    let pdf;
+                    
+                    if (window.jspdf && window.jspdf.jsPDF) {
+                        pdf = new window.jspdf.jsPDF();
+                    } else if (window.jsPDF) {
+                        pdf = new window.jsPDF();
+                    } else if (typeof jsPDF !== 'undefined') {
+                        pdf = new jsPDF();
+                    } else {
+                        throw new Error('jsPDF library not found');
+                    }
+                    
+                    // Add content to PDF
+                    pdf.text('Hello World!', 10, 10);
+                    
+                    // Save the PDF
+                    pdf.save('test.pdf');
+                    
+                    resultDisplay.textContent = 'PDF generated successfully!';
+                } catch (error) {
+                    console.error('PDF generation error:', error);
+                    resultDisplay.textContent = `Error generating PDF: ${error.message}`;
+                }
+            });
+            
+            // CSV Parsing test
+            parseButton.addEventListener('click', function() {
+                try {
+                    const csvData = csvInput.value;
+                    
+                    if (!window.Papa) {
+                        throw new Error('PapaParse library not found');
+                    }
+                    
+                    // Parse CSV
+                    Papa.parse(csvData, {
+                        header: true,
+                        complete: function(results) {
+                            resultDisplay.textContent = 'Parsed CSV:\n' + JSON.stringify(results.data, null, 2);
+                        },
+                        error: function(error) {
+                            throw error;
+                        }
+                    });
+                } catch (error) {
+                    console.error('CSV parsing error:', error);
+                    resultDisplay.textContent = `Error parsing CSV: ${error.message}`;
+                }
+            });
+            
+            // Define a test parseCSV function
+            window.parseCSV = function(file) {
+                return new Promise((resolve, reject) => {
+                    if (!window.Papa) {
+                        reject(new Error('PapaParse library not found'));
+                        return;
+                    }
+                    
+                    Papa.parse(file, {
+                        header: true,
+                        dynamicTyping: true,
+                        skipEmptyLines: true,
+                        complete: function(results) {
+                            resolve(results);
+                        },
+                        error: function(error) {
+                            reject(error);
+                        }
+                    });
+                });
+            };
+        });
+    </script>
+</body>
+</html> 
