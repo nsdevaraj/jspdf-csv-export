@@ -7,14 +7,14 @@ positions = ['Junior', 'Senior', 'Lead', 'Manager', 'Director']
 statuses = ['Active', 'On Leave', 'Terminated', 'Suspended']
      
 
-# Generate large CSV file (100,000 rows)
+# Generate large CSV file (1000,000 rows)
 with open('data/large.csv', 'w', newline='') as file:
     writer = csv.writer(file)
     # Header row
     writer.writerow(['ID', 'Name', 'Email', 'Department', 'Position', 'Salary', 'Start Date', 'Status', 'Notes'])
     
     # Data rows
-    for i in range(1, 100001):
+    for i in range(1, 1000001):
         writer.writerow([
             i,
             f'Person {i}',

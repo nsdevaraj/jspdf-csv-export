@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>jsPDF CSV Streaming - Batch Download Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+            text-align: center;
+        }
+        .drop-zone {
+            border: 2px dashed #3498db;
+            border-radius: 5px;
+            padding: 25px;
+            text-align: center;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+            background-color: #f8fafc;
+        }
+        .drop-zone.active {
+            border-color: #27ae60;
+            background-color: rgba(39, 174, 96, 0.1);
+        }
+        .file-input {
+            display: none;
+        }
+        .btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        .btn:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        .btn-primary {
+            background-color: #9b59b6;
+        }
+        .btn-primary:hover {
+            background-color: #8e44ad;
+        }
+        .progress-container {
+            margin: 20px 0;
+            display: none;
+        }
+        .progress-bar {
+            height: 20px;
+            background-color: #ecf0f1;
+            border-radius: 5px;
+            overflow: hidden;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .progress {
+            height: 100%;
+            background: linear-gradient(to right, #3498db, #2ecc71);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .status-message {
+            margin-top: 10px;
+            font-style: italic;
+            color: #7f8c8d;
+            text-align: center;
+        }
+        .settings-panel {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .settings-panel h2 {
+            margin-top: 0;
+            font-size: 18px;
+            color: #2c3e50;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #34495e;
+        }
+        .form-group select, .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #fff;
+            transition: border-color 0.3s;
+        }
+        .form-group select:focus, .form-group input:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+        .form-row {
+            display: flex;
+            gap: 15px;
+        }
+        .form-row .form-group {
+            flex: 1;
+        }
+        .file-list-container {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+            display: none;
+        }
+        .file-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            background-color: #fff;
+        }
+        .file-item:last-child {
+            border-bottom: none;
+        }
+        .file-item-name {
+            flex: 1;
+            font-weight: bold;
+        }
+        .file-item-status {
+            width: 120px;
+            text-align: center;
+        }
+        .file-item-progress {
+            width: 150px;
+            height: 10px;
+            background-color: #ecf0f1;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-left: 15px;
+        }
+        .file-item-progress-bar {
+            height: 100%;
+            background-color: #2ecc71;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .download-button {
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        .download-button:hover {
+            background-color: #27ae60;
+        }
+        .download-all-container {
+            padding: 15px;
+            background-color: #f8f9fa;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+        }
+        .download-all-button {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        .download-all-button:hover {
+            background-color: #c0392b;
+        }
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-bottom: none;
+            margin-bottom: -1px;
+            background-color: #f8f8f8;
+            border-radius: 5px 5px 0 0;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            background-color: white;
+            border-color: #ddd;
+            color: #3498db;
+            font-weight: bold;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .download-options {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .download-options h3 {
+            margin-top: 0;
+            font-size: 16px;
+            color: #2c3e50;
+        }
+        .download-progress {
+            margin-top: 15px;
+            display: none;
+        }
+        .download-status {
+            margin-top: 10px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>jsPDF CSV Streaming - Batch Download Example</h1>
+        
+        <div id="drop-zone" class="drop-zone">
+            <p>Drag & drop your CSV file here or</p>
+            <input type="file" id="file-input" class="file-input" accept=".csv">
+            <button id="browse-button" class="btn">Browse Files</button>
+        </div>
+        
+        <div class="settings-panel" id="settings-panel">
+            <div class="tabs">
+                <div class="tab active" data-tab="general">General</div>
+                <div class="tab" data-tab="multi-file">Multi-File Settings</div>
+                <div class="tab" data-tab="download">Download Options</div>
+            </div>
+            
+            <div class="tab-content active" id="general-tab">
+                <h2>General Settings</h2>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="page-size">Page Size</label>
+                        <select id="page-size">
+                            <option value="a4">A4</option>
+                            <option value="letter">Letter</option>
+                            <option value="legal">Legal</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="orientation">Orientation</label>
+                        <select id="orientation">
+                            <option value="portrait">Portrait</option>
+                            <option value="landscape">Landscape</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="title">Document Title</label>
+                        <input type="text" id="title" placeholder="CSV Data Export">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="author">Author</label>
+                        <input type="text" id="author" placeholder="jsPDF CSV Streaming">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="multi-file-tab">
+                <h2>Multi-File Settings</h2>
+                
+                <div class="form-group">
+                    <label for="rows-per-file">Rows Per File</label>
+                    <select id="rows-per-file">
+                        <option value="10000">10,000 rows</option>
+                        <option value="25000">25,000 rows</option>
+                        <option value="50000" selected>50,000 rows</option>
+                        <option value="100000">100,000 rows</option>
+                        <option value="250000">250,000 rows</option>
+                    </select>
+                    <small>For very large files (1M+ rows), use smaller values to prevent browser crashes</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="file-name-pattern">File Name Pattern</label>
+                    <input type="text" id="file-name-pattern" value="export-{index}.pdf">
+                    <small>Use {index} as placeholder for file number</small>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="download-tab">
+                <h2>Download Options</h2>
+                
+                <div class="form-group">
+                    <label for="zip-file-name">ZIP Archive Name</label>
+                    <input type="text" id="zip-file-name" value="export.zip">
+                </div>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="use-zip" checked>
+                        Use ZIP archive for multiple files
+                    </label>
+                </div>
+                
+                <div class="form-group">
+                    <label for="max-concurrent">Maximum Concurrent Downloads</label>
+                    <select id="max-concurrent">
+                        <option value="1">1 (Sequential)</option>
+                        <option value="2" selected>2</option>
+                        <option value="3">3</option>
+                        <option value="5">5</option>
+                    </select>
+                    <small>Only applies when not using ZIP archive</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="download-delay">Delay Between Downloads (ms)</label>
+                    <input type="number" id="download-delay" value="500" min="0" max="5000" step="100">
+                    <small>Only applies when not using ZIP archive</small>
+                </div>
+            </div>
+        </div>
+        
+        <div style="text-align: center;">
+            <button id="generate-button" class="btn btn-primary" disabled>Generate Multi-File PDF</button>
+        </div>
+        
+        <div id="progress-container" class="progress-container">
+            <div class="progress-bar">
+                <div id="progress" class="progress"></div>
+            </div>
+            <div id="status-message" class="status-message">Ready to process...</div>
+        </div>
+        
+        <div id="file-list-container" class="file-list-container"></div>
+        
+        <div id="download-options" class="download-options" style="display: none;">
+            <h3>Download Options</h3>
+            <button id="download-all-zip" class="download-all-button">Download All as ZIP</button>
+            <button id="download-all-sequential" class="btn">Download All Sequentially</button>
+            
+            <div id="download-progress" class="download-progress">
+                <div class="progress-bar">
+                    <div id="download-progress-bar" class="progress"></div>
+                </div>
+                <div id="download-status" class="download-status">Preparing downloads...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include required libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/3.0.0/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
+    <!-- Include our library files -->
+    <script src="../js/utils.js"></script>
+    <script src="../js/csv-parser.js"></script>
+    <script src="../js/pdf-generator.js"></script>
+    <script src="../js/multi-file-pdf-generator.js"></script>
+    <script src="../js/batch-download-manager.js"></script>
+    <script src="../js/multi-file-app.js"></script>
+    
+    <script>
+        // Initialize the application when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Tab functionality
+            const tabs = document.querySelectorAll('.tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const tabId = tab.getAttribute('data-tab');
+                    
+                    // Update active tab
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    // Update active content
+                    tabContents.forEach(content => {
+                        content.classList.remove('active');
+                        if (content.id === `${tabId}-tab`) {
+                            content.classList.add('active');
+                        }
+                    });
+                });
+            });
+            
+            // Initialize download manager
+            const downloadManager = new BatchDownloadManager({
+                zipFileName: 'export.zip',
+                maxConcurrentDownloads: 2,
+                downloadDelay: 500,
+                useZipForMultipleFiles: true
+            });
+            
+            // Initialize the application with multi-file options
+            const app = new MultiFileCSVtoPDFApp({
+                // UI element IDs
+                dropZoneId: 'drop-zone',
+                fileInputId: 'file-input',
+                browseButtonId: 'browse-button',
+                generateButtonId: 'generate-button',
+                progressContainerId: 'progress-container',
+                progressBarId: 'progress',
+                statusMessageId: 'status-message',
+                settingsPanelId: 'settings-panel',
+                fileListContainerId: 'file-list-container',
+                
+                // Multi-file PDF options
+                pdfOptions: {
+                    pageSize: 'a4',
+                    orientation: 'portrait',
+                    rowsPerFile: 50000,
+                    fileNamePattern: 'export-{index}.pdf',
+                    createZipArchive: true
+                },
+                
+                // Callbacks for detailed progress information
+                onStart: () => {
+                    console.log('Starting multi-file PDF generation');
+                    document.getElementById('download-options').style.display = 'none';
+                },
+                
+                onProgress: (processed, total, currentFile, totalFiles) => {
+                    console.log(`Progress: ${processed}/${total} rows (${Math.round((processed/total)*100)}%) - File ${currentFile}/${totalFiles}`);
+                },
+                
+                onFileStart: (fileIndex, fileName) => {
+                    console.log(`Starting file ${fileIndex + 1}: ${fileName}`);
+                },
+                
+                onFileComplete: (fileIndex, pdf, fileName) => {
+                    console.log(`Completed file ${fileIndex + 1}: ${fileName}`);
+                },
+                
+                onComplete: (result) => {
+                    console.log('All files generated:', result);
+                    
+                    // Show download options
+                    const downloadOptions = document.getElementById('download-options');
+                    downloadOptions.style.display = 'block';
+                    
+                    // Clear previous downloads
+                    downloadManager.clearQueue();
+                    
+                    // Add files to download manager
+                    downloadManager.addMultipleToQueue(result.files);
+                    
+                    // Update ZIP button visibility
+                    document.getElementById('download-all-zip').style.display = 
+                        result.files.length > 1 ? 'inline-block' : 'none';
+                },
+                
+                onError: (error) => {
+                    console.error('Error during generation:', error);
+                }
+            });
+            
+            // Connect settings to app configuration
+            document.getElementById('page-size').addEventListener('change', function() {
+                app.updatePdfOptions({ pageSize: this.value });
+            });
+            
+            document.getElementById('orientation').addEventListener('change', function() {
+                app.updatePdfOptions({ orientation: this.value });
+            });
+            
+            document.getElementById('title').addEventListener('input', function() {
+                app.updatePdfOptions({ title: this.value });
+            });
+            
+            document.getElementById('author').addEventListener('input', function() {
+                app.updatePdfOptions({ author: this.value });
+            });
+            
+            document.getElementById('rows-per-file').addEventListener('change', function() {
+                app.updatePdfOptions({ rowsPerFile: parseInt(this.value) });
+            });
+            
+            document.getElementById('file-name-pattern').addEventListener('input', function() {
+                app.updatePdfOptions({ fileNamePattern: this.value });
+            });
+            
+            // Connect download options to download manager
+            document.getElementById('zip-file-name').addEventListener('input', function() {
+                downloadManager.options.zipFileName = this.value;
+            });
+            
+            document.getElementById('use-zip').addEventListener('change', function() {
+                downloadManager.options.useZipForMultipleFiles = this.checked;
+            });
+            
+            document.getElementById('max-concurrent').addEventListener('change', function() {
+                downloadManager.options.maxConcurrentDownloads = parseInt(this.value);
+            });
+            
+            document.getElementById('download-delay').addEventListener('input', function() {
+                downloadManager.options.downloadDelay = parseInt(this.value);
+            });
+            
+            // Download buttons
+            document.getElementById('download-all-zip').addEventListener('click', function() {
+                const downloadProgress = document.getElementById('download-progress');
+                const downloadProgressBar = document.getElementById('download-progress-bar');
+                const downloadStatus = document.getElementById('download-status');
+                
+                downloadProgress.style.display = 'block';
+                downloadProgressBar.style.width = '0%';
+                downloadStatus.textContent = 'Creating ZIP archive...';
+                
+                // Force ZIP mode
+                downloadManager.options.useZipForMultipleFiles = true;
+                
+                // Start downloads
+                downloadManager.startDownloads({
+                    onStart: (totalFiles) => {
+                        console.log(`Starting download of ${totalFiles} files as ZIP`);
+                    },
+                    onProgress: (current, total, zipPercent) => {
+                        const percent = zipPercent || Math.round((current / total) * 100);
+                        downloadProgressBar.style.width = `${percent}%`;
+                        downloadStatus.textContent = zipPercent 
+                            ? `Creating ZIP: ${zipPercent.toFixed(1)}% complete` 
+                            : `Adding files to ZIP: ${current}/${total}`;
+                    },
+                    onComplete: () => {
+                        downloadStatus.textContent = 'Download complete!';
+                        setTimeout(() => {
+                            downloadProgress.style.display = 'none';
+                        }, 3000);
+                    },
+                    onError: (error) => {
+                        downloadStatus.textContent = `Error: ${error.message}`;
+                    }
+                });
+            });
+            
+            document.getElementById('download-all-sequential').addEventListener('click', function() {
+                const downloadProgress = document.getElementById('download-progress');
+                const downloadProgressBar = document.getElementById('download-progress-bar');
+                const downloadStatus = document.getElementById('download-status');
+                
+                downloadProgress.style.display = 'block';
+                downloadProgressBar.style.width = '0%';
+                downloadStatus.textContent = 'Preparing sequential downloads...';
+                
+                // Force sequential mode
+                downloadManager.options.useZipForMultipleFiles = false;
+                
+                // Start downloads
+                downloadManager.startDownloads({
+                    onStart: (totalFiles) => {
+                        console.log(`Starting sequential download of ${totalFiles} files`);
+                    },
+                    onProgress: (current, total) => {
+                        const percent = Math.round((current / total) * 100);
+                        downloadProgressBar.style.width = `${percent}%`;
+                        downloadStatus.textContent = `Downloading: ${current}/${total} files (${percent}%)`;
+                    },
+                    onFileDownloadStart: (index, fileName) => {
+                        downloadStatus.textContent = `Downloading: ${fileName}`;
+                    },
+                    onFileDownloadComplete: (index, fileName) => {
+                        console.log(`Downloaded: ${fileName}`);
+                    },
+                    onComplete: () => {
+                        downloadStatus.textContent = 'All downloads complete!';
+                        setTimeout(() => {
+                            downloadProgress.style.display = 'none';
+                        }, 3000);
+                    },
+                    onError: (error) => {
+                        downloadStatus.textContent = `Error: ${error.message}`;
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
